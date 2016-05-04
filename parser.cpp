@@ -33,6 +33,7 @@ Parser::Parser()
     m_map['>'] = T_GT;
     m_map['<'] = T_LT;
     m_map[':'] = T_COLON;
+    m_map['#'] = T_SHARP;
     m_re_basic_type = "[a-zA-Z0-9_]*";
     m_re_variable = "[a-zA-Z_0-9]+";
 }
@@ -137,80 +138,49 @@ int Parser::parseType(int from, int to)
     return -1;
 }
 
-int Parser::parseFunc(int from, int to)
+int Parser::parseFuncDecl(int from, int to)
 {
-    int ret = parseType(from, to);
-
-    if (ret == -1)
-        return -1;
-    if (m_tokens[ret].type != T_WORD)
-        return -1;
-
-    if (m_tokens[ret + 1].type != T_BRACKET_OPEN)
-        return -1;
-
-    int i=ret + 2;
-
-    // 0 - arg type
-    // 1 - arg name
-
-    int state=0;
-    while (i < to)
+    int ret = parseFuncSignature(from, to);
+    if (ret > 0)
     {
-        int x;
-        const Token& t = m_tokens[i] ;
-        switch(state)
+        if (m_tokens[ret].type == T_STATEMENT_END)
         {
-        case 0:
-            LEN_CHK(i+1,-1)
-            if (t.type == T_BRACKET_CLOSE && m_tokens[i+1].type == T_STATEMENT_END)
-            {
-                return i+2;
-            }
-            x = parseType(i, to);
-            if (x == -1)
-            {
-                return -1;
-            } else
-            {
-                i = x;
-                state = 1;
-            }
-            break;
-        case 1:
-            x = parseVar(i);
-            if (x==-1)
-            {
-                return -1;
-            } else
-            {
-                i = x;
-                state = 2;
-            }
-            break;
-        case 2:
-            LEN_CHK(i+1,-1)
-            if (m_tokens[i].type == T_BRACKET_CLOSE && m_tokens[i+1].type == T_STATEMENT_END)
-            {
-                return i+2;
-            } else if (m_tokens[i].type == T_SEPARATOR)
-            {
-                state = 0;
-                i++;
-            } else
-            {
-                return -1;
-            }
-            break;
-        default:
-            break;
+            return ret;
         }
     }
     return -1;
 }
 
-int Parser::parseFuncDecl(int from, int to)
+int Parser::parseFunc(int from, int to)
 {
+    int ret = parseFuncSignature(from, to);
+    if (ret > -1)
+    {
+        if (m_tokens[ret].type != T_BLOCK_START)
+            return -1;
+
+        int i = ret;
+        std::stack<int> blocks;
+        while (i<to)
+        {
+            switch (m_tokens[i].type)
+            {
+            case T_BLOCK_START:
+                blocks.push(i);
+                break;
+            case T_BLOCK_END:
+                blocks.pop();
+                if (blocks.empty())
+                {
+                    return i+1;
+                }
+                break;
+            default:
+                break;
+            }
+            i++;
+        }
+    }
     return -1;
 }
 
@@ -328,7 +298,9 @@ int Parser::parseClass(int from, int to)
                     case T_BLOCK_END:
                         blocks.pop();
                         if (blocks.empty())
+                        {
                             stop = true;
+                        }
                         break;
                     default:
                         break;
@@ -337,25 +309,29 @@ int Parser::parseClass(int from, int to)
                 }
             }
         }
-        int ret = parseFunc(i,to);
+        int ret = parseFuncDecl(i,to);
         if (ret > 0)
         {
             std::cout<<"memx"<<m_tokens[i].text<<std::endl;
             printScope();
-            i = ret -1;
+            i = ret;
+        }
+        else if ((ret = parseMember(i, to)) > 0)
+        {
+            std::cout<<"memf"<<m_tokens[i].text<<std::endl;
+            printScope();
+            i = ret;
+        }
+        else if ((ret = parseFunc(i,to)) > 0)
+        {
+            std::cout<<"memfxx"<<m_tokens[i].text<<std::endl;
+            printScope();
+            i = ret;
         }
         else
         {
-            ret = parseMember(i, to);
-            if (ret > 0)
-            {
-                std::cout<<"memf"<<m_tokens[i].text<<std::endl;
-                printScope();
-                i = ret -1;
-            }
+            i++;
         }
-
-        i++;
     }
     return to;
 }
@@ -402,6 +378,7 @@ void Parser::tokenize(const std::string& cpp)
         case '=':
         case '<':
         case '>':
+        case '#':
             if (current.isSet())
                 m_tokens.push_back(current);
             current.text = c;
@@ -429,6 +406,11 @@ void Parser::parse()
         const Token& t = m_tokens[i];
         switch (t.type)
         {
+        case T_SHARP:
+        {
+            std::cout<<"ss"<<std::endl;
+            break;
+        }
         case T_BLOCK_START:
             break;
         case T_BRACKET_OPEN:
@@ -444,11 +426,21 @@ void Parser::parse()
                 switch (scope.type)
                 {
                 case S_ENUM:
-                    std::cout<<"e"<<parseEnum(from, i-1)<<std::endl;
+                {
+                    int ret = parseEnum(from, i+1);
+                    if (ret > 0)
+                    {
+                        std::cout<<"enum"<<std::endl;
+                    }
                     break;
+                }
                 case S_CLASS:
-                    std::cout<<"c"<<parseClass(from, i-1)<<std::endl;
+                {
+                    int ret = parseClass(from, i+1);
+                    if (ret > 0)
+                    {}
                     break;
+                }
                 default:
                     break;
                 }
@@ -461,7 +453,9 @@ void Parser::parse()
         }
         default:
         {
-            if (m_tokens[i].type == T_WORD && m_tokens[i+1].type == T_WORD)
+            bool found=false;
+            if (m_tokens[i].type == T_WORD &&
+                m_tokens[i+1].type == T_WORD)
             {
                 const Token& tc = m_tokens[i];
                 const Token& tp = m_tokens[i+1];
@@ -469,6 +463,7 @@ void Parser::parse()
                 {
                     if (tc.text == blocks[x])
                     {
+                        found = true;
                         Scope scope;
                         switch (x)
                         {
@@ -506,6 +501,21 @@ void Parser::parse()
                     }
                 }
             }
+
+            if (m_sstack.empty() && found == false)
+            {
+                int ret;
+                if ((ret = parseFuncDecl(i, m_tokens.size())) > 0)
+                {
+                    i = ret -1;
+                    std::cout<<"funcdecl"<<std::endl;
+                } else if ((ret = parseFunc(i, m_tokens.size())) > 0 )
+                {
+                    i = ret -1;
+                    std::cout<<"func"<<std::endl;
+                }
+
+            }
             break;
         }
         }
@@ -520,4 +530,76 @@ void Parser::printScope()
         std::cout << s.text << "::" ;
     }
     std::cout << std::endl;
+}
+
+int Parser::parseFuncSignature(int from, int to)
+{
+    int ret = parseType(from, to);
+
+    if (ret == -1)
+        return -1;
+    if (m_tokens[ret].type != T_WORD)
+        return -1;
+
+    if (m_tokens[ret + 1].type != T_BRACKET_OPEN)
+        return -1;
+
+    int i=ret + 2;
+
+    // 0 - arg type
+    // 1 - arg name
+
+    int state=0;
+    while (i < to)
+    {
+        int x;
+        const Token& t = m_tokens[i] ;
+        switch(state)
+        {
+        case 0:
+            LEN_CHK(i+1,-1)
+            if (t.type == T_BRACKET_CLOSE )
+            {
+                return i+1;
+            }
+            x = parseType(i, to);
+            if (x == -1)
+            {
+                return -1;
+            } else
+            {
+                i = x;
+                state = 1;
+            }
+            break;
+        case 1:
+            x = parseVar(i);
+            if (x==-1)
+            {
+                return -1;
+            } else
+            {
+                i = x;
+                state = 2;
+            }
+            break;
+        case 2:
+            LEN_CHK(i+1,-1)
+            if (m_tokens[i].type == T_BRACKET_CLOSE)
+            {
+                return i+1;
+            } else if (m_tokens[i].type == T_SEPARATOR)
+            {
+                state = 0;
+                i++;
+            } else
+            {
+                return -1;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return -1;
 }

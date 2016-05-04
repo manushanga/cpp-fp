@@ -7,4 +7,5 @@ SOURCES += main.cpp \
     parser.cpp
 
 HEADERS += \
-    parser.h
+    parser.h \
+    codemodel.h

@@ -31,6 +31,7 @@ private:
         T_BRACKET_OPEN,
         T_BRACKET_CLOSE,
         T_STATEMENT_END,
+        T_SHARP,
         T_NONE
     };
     struct Scope
@@ -89,4 +90,7 @@ public:
     void tokenize(const std::string& cpp);
     void parse();
     void printScope();
+
+private:
+    int parseFuncSignature(int from, int to);
 };

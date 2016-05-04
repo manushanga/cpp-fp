@@ -6,7 +6,8 @@ int main(int argc, char *argv[])
 {
     Parser p;
     std::string s;
-    s = "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;"
+    s = "#include <dd.h>"
+        "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;"
         "pair<int, jj> ss;"
         "enum  ENUM  {A=0,V=  450, Hed=2};"
         "namespace  aa { namespace bb{ "
@@ -17,8 +18,10 @@ int main(int argc, char *argv[])
             "hh<tt,uuu,dd > as;"
             "void a();"
             "signed long int a;"
+            "int aa(h<d,gd> f) {  int g; h;} "
         "};"
         "class XX { class D : public A<B>, private C { float a; class V{ int c; }; }; int s; };"
+        "T<D,t> func(int ads, XC<F,d,f > d) {}"
         "}}";
 /*
     s= "int ao_plugin_test(); \
