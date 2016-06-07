@@ -2,6 +2,9 @@
 #include <string>
 #include <vector>
 #include <regex>
+
+#include "codemodel.h"
+
 class Parser
 {
 private:
@@ -16,6 +19,7 @@ private:
     enum TokenType
     {
         T_WORD,
+        T_LITERAL_QUOTE,
         T_MUL,
         T_DIV,
         T_PLUS,
@@ -74,6 +78,9 @@ private:
     std::vector<Parser::Token> m_tokens;
     std::vector<int> m_tstack;
     std::vector<Scope> m_sstack;
+    ScopeNode *m_scopeRoot;
+    std::stack<ScopeNode *> m_scopeNodes;
+
 public:
     Parser();
 
@@ -89,6 +96,7 @@ public:
     int parseDestructor(int from, int to);
     void tokenize(const std::string& cpp);
     void parse();
+    void print();
     void printScope();
 
 private:

@@ -1,4 +1,6 @@
-#include <parser.h>
+#include "codemodel.h"
+#include "parser.h"
+
 #include <vector>
 #include <iostream>
 #include <stack>
@@ -19,6 +21,7 @@
 Parser::Parser()
 {
     m_map['('] = T_BRACKET_OPEN;
+    m_map['"'] = T_LITERAL_QUOTE;
     m_map[')'] = T_BRACKET_CLOSE;
     m_map['*'] = T_MUL;
     m_map['&'] = T_AMP;
@@ -198,13 +201,32 @@ int Parser::parseEnum(int from, int to)
         from++;
 
     int i=from+3;
+
+    if (m_tokens[from+1].type != T_WORD) // must be enum name
+        return -1;
+
+    auto node = new Node(m_tokens[from+1].text, TID_ENUM);
+
+    m_scopeNodes.top()->addNode(*node);
+
+    if (m_tokens[from+2].type == T_COLON) // integral data type specfication
+    {
+        i = parseType(from+3, to);
+        if (i == -1)
+            return -1;
+        else
+            i++;
+    }
     int state = 0;
     while (i < to)
     {
         switch (state) {
         case 0:
             if (m_tokens[i].type == T_WORD)
+            {
+                node->addData(m_tokens[i].text);
                 state = 1;
+            }
             else
                 return -1;
             break;
@@ -398,6 +420,9 @@ void Parser::tokenize(const std::string& cpp)
 
 void Parser::parse()
 {
+    m_scopeRoot = new ScopeNode("", SID_FILE);
+    m_scopeNodes.push(m_scopeRoot);
+
     const char* blocks[] = {"class","namespace", "enum", "struct"};
 
     int i=0;
@@ -430,7 +455,7 @@ void Parser::parse()
                     int ret = parseEnum(from, i+1);
                     if (ret > 0)
                     {
-                        std::cout<<"enum"<<std::endl;
+                        i = ret;
                     }
                     break;
                 }
@@ -438,7 +463,9 @@ void Parser::parse()
                 {
                     int ret = parseClass(from, i+1);
                     if (ret > 0)
-                    {}
+                    {
+                        i = ret;
+                    }
                     break;
                 }
                 default:
@@ -447,6 +474,8 @@ void Parser::parse()
 
                 m_tstack.pop_back();
                 m_sstack.pop_back();
+                if (m_scopeNodes.size()>1)
+                    m_scopeNodes.pop();
 
             }
             break;
@@ -454,53 +483,69 @@ void Parser::parse()
         default:
         {
             bool found=false;
-            if (m_tokens[i].type == T_WORD &&
-                m_tokens[i+1].type == T_WORD)
+            if (m_tokens[i].type == T_WORD )
             {
-                const Token& tc = m_tokens[i];
-                const Token& tp = m_tokens[i+1];
-                for (int x=0;x<sizeof(blocks)/sizeof(void*);x++)
+                Scope scope;
+                if (m_tokens[i].text == "namespace" && m_tokens[i+1].type == T_WORD) // namespace with a name
                 {
-                    if (tc.text == blocks[x])
-                    {
-                        found = true;
-                        Scope scope;
-                        switch (x)
-                        {
-                        case 0:
-                            scope.type = S_CLASS;
-                            scope.text = tp.text;
-                            m_sstack.push_back(scope);
+                    scope.type = S_NAMESPACE;
+                    scope.text = m_tokens[i+1].text;
+                    m_sstack.push_back(scope);
+                    m_tstack.push_back(i);
 
-                            m_tstack.push_back(i);
-                            break;
-                        case 1:
-                            scope.type = S_NAMESPACE;
-                            scope.text = tp.text;
-                            m_sstack.push_back(scope);
+                    auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_NAMESPACE);
+                    m_scopeNodes.top()->addChildScope(*nodePtr);
+                    m_scopeNodes.push(nodePtr);
+                    found = true;
+                }
+                else if (m_tokens[i].text == "namespace" && m_tokens[i+1].type == T_BLOCK_START) // namspace without a name
+                {
+                    scope.type = S_NAMESPACE;
+                    scope.text = "$ANONYMOUS";
+                    m_sstack.push_back(scope);
+                    m_tstack.push_back(i);
 
-                            m_tstack.push_back(i);
-                            break;
-                        case 2:
-                            scope.type = S_ENUM;
-                            scope.text = tp.text;
-                            m_sstack.push_back(scope);
+                    auto nodePtr = new ScopeNode(scope.text, SID_NAMESPACE);
+                    m_scopeNodes.top()->addChildScope(*nodePtr);
+                    m_scopeNodes.push(nodePtr);
+                    found = true;
+                }
+                else if (m_tokens[i].text == "class" && m_tokens[i+1].type == T_WORD)
+                {
+                    scope.type = S_CLASS;
+                    scope.text = m_tokens[i+1].text;
+                    m_sstack.push_back(scope);
+                    m_tstack.push_back(i);
 
-                            m_tstack.push_back(i);
-                            break;
-                        case 3:
-                            scope.type = S_STRUCT;
-                            scope.text = tp.text;
-                            m_sstack.push_back(scope);
+                    auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_CLASS);
+                    m_scopeNodes.top()->addChildScope(*nodePtr);
+                    m_scopeNodes.push(nodePtr);
+                    found = true;
 
-                            m_tstack.push_back(i);
-                            break;
-                        default:
-                            break;
-                        }
-                    }
+                }
+                else if (m_tokens[i].text == "struct" && m_tokens[i+1].type == T_WORD)
+                {
+                    scope.type = S_STRUCT;
+                    scope.text = m_tokens[i+1].text;
+                    m_sstack.push_back(scope);
+                    m_tstack.push_back(i);
+
+                    auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_STRUCT);
+                    m_scopeNodes.top()->addChildScope(*nodePtr);
+                    m_scopeNodes.push(nodePtr);
+                    found = true;
+                }
+                else if (m_tokens[i].text == "enum" && m_tokens[i+1].type == T_WORD)
+                {
+                    scope.type = S_ENUM;
+                    scope.text = m_tokens[i+1].text;
+                    m_sstack.push_back(scope);
+
+                    m_tstack.push_back(i);
+                    found = true;
                 }
             }
+
 
             if (m_sstack.empty() && found == false)
             {
@@ -508,11 +553,9 @@ void Parser::parse()
                 if ((ret = parseFuncDecl(i, m_tokens.size())) > 0)
                 {
                     i = ret -1;
-                    std::cout<<"funcdecl"<<std::endl;
                 } else if ((ret = parseFunc(i, m_tokens.size())) > 0 )
                 {
                     i = ret -1;
-                    std::cout<<"func"<<std::endl;
                 }
 
             }
@@ -523,6 +566,13 @@ void Parser::parse()
     }
 }
 
+void Parser::print()
+{
+    std::string str;
+    m_scopeRoot->print(str);
+    std::cout<<str<<std::endl;
+}
+
 void Parser::printScope()
 {
     for (Scope& s: m_sstack)
@@ -530,6 +580,7 @@ void Parser::printScope()
         std::cout << s.text << "::" ;
     }
     std::cout << std::endl;
+
 }
 
 int Parser::parseFuncSignature(int from, int to)

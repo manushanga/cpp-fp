@@ -2,30 +2,39 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
-// typenames without default args for templates or spaces
-// int, F<A,G>
-class Type
+enum NodeType { TID_FUNCTION=0, TID_MEMBER, TID_ENUM };
+enum ScopeType { SID_FILE=0, SID_NAMESPACE, SID_CLASS, SID_STRUCT, SID_UNKNOWN };
+
+static const char *ScopeTypeNames[] = {"File", "Namespace", "Class", "Struct", "Unknown"};
+static const char *NodeTypeNames[] = {"Function", "Member", "Enum"};
+
+class Node
 {
 public:
-    Type(const std::string& typeName);
-    const std::string& getTypeName();
+    Node(const std::string& name, NodeType type);
+    const std::string& getName() const;
+    void addData(const std::string& data);
+    void print(std::string& output) const;
 private:
-    std::string m_typename;
+    NodeType m_type;
+    std::string m_name;
+    std::vector<std::string> m_data;
 };
 
 
-class TranslationUnit
+class ScopeNode
 {
 public:
+    ScopeNode(const std::string& name, ScopeType type);
+    const std::string &getName() const;
+    void addNode(const Node& node);
+    void addChildScope(const ScopeNode& scopeNode);
+    void print(std::string& output) const;
 private:
-    std::vector<std::string> m_includes;
-
-
-};
-
-class CodeModel
-{
-public:
-    std::map<std::string, TranslationUnit*> m_units;
+    std::map<std::string, const ScopeNode*> m_children;
+    std::map<std::string, const Node*> m_nodes;
+    std::string m_name;
+    ScopeType m_type;
 };

@@ -1,5 +1,5 @@
 #include <iostream>
-#include <parser.h>
+#include "parser.h"
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -7,12 +7,18 @@ int main(int argc, char *argv[])
     Parser p;
     std::string s;
     s = "#include <dd.h>"
+		"#define AA \ daf \ d "
         "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;"
         "pair<int, jj> ss;"
         "enum  ENUM  {A=0,V=  450, Hed=2};"
-        "namespace  aa { namespace bb{ "
+        "namespace { xx; ff;}"
+        "namespace  nam1 { namespace nam2{ "
         "class jj<s,f> : private A, public gB<j,df> "
         "{"
+            "typedef XX<c,C> dd;"
+            "class XXv {};"
+            "enum cf : int {dd,g};"
+            "enum gc : unsigned int {ff ,g};"
             "enum cc{cc, g,h,f};"
             "jj();"
             "hh<tt,uuu,dd > as;"
@@ -36,5 +42,6 @@ int main(int argc, char *argv[])
             const char *ao_plugin_file_extension();";*/
     p.tokenize(s);
     p.parse();
+    p.print();
     return 0;
 }
