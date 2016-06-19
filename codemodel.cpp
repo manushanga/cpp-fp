@@ -12,7 +12,7 @@ const std::string &Node::getName() const
     return m_name;
 }
 
-void Node::addData(const std::string &data)
+void Node::addData(const std::__cxx11::string &data)
 {
     m_data.push_back(data);
 }
@@ -64,19 +64,24 @@ void ScopeNode::print(std::string &output) const
     output += "type: ";
     output += ScopeTypeNames[m_type];
     output += "\n";
-    output += "nodes: \n";
-    output += "[\n";
-    for (auto& node : m_nodes)
+    if (!m_nodes.empty())
     {
-        node.second->print(output);
+        output += "nodes: \n";
+        output += "[\n";
+        for (auto& node : m_nodes)
+        {
+            node.second->print(output);
+        }
+        output += "]\n";
     }
-    output += "]\n";
-    output += "children:\n";
-    output += "{\n";
-    for (auto& child : m_children)
+    if (!m_children.empty())
     {
-        child.second->print(output);
+        output += "children:\n";
+        output += "{\n";
+        for (auto& child : m_children)
+        {
+            child.second->print(output);
+        }
+        output += "}\n";
     }
-    output += "}\n";
-
 }

@@ -4,11 +4,11 @@
 #include <vector>
 #include <map>
 
-enum NodeType { TID_FUNCTION=0, TID_MEMBER, TID_ENUM };
+enum NodeType { TID_FUNCTION=0, TID_MEMBER, TID_CONSTRUCTOR, TID_DESTRUCTOR, TID_OPERATOR, TID_ENUM };
 enum ScopeType { SID_FILE=0, SID_NAMESPACE, SID_CLASS, SID_STRUCT, SID_UNKNOWN };
 
 static const char *ScopeTypeNames[] = {"File", "Namespace", "Class", "Struct", "Unknown"};
-static const char *NodeTypeNames[] = {"Function", "Member", "Enum"};
+static const char *NodeTypeNames[] = {"Function", "Member", "Constructor", "Destructor", "Operator", "Enum"};
 
 class Node
 {

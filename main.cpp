@@ -11,8 +11,9 @@ int main(int argc, char *argv[])
         "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;"
         "pair<int, jj> ss;"
         "enum  ENUM  {A=0,V=  450, Hed=2};"
+        "enum class XXE : int {A, H};"
         "namespace { xx; ff;}"
-        "namespace  nam1 { namespace nam2{ "
+        "namespace  nam1 { namespace nam2 { "
         "class jj<s,f> : private A, public gB<j,df> "
         "{"
             "typedef XX<c,C> dd;"
@@ -20,14 +21,18 @@ int main(int argc, char *argv[])
             "enum cf : int {dd,g};"
             "enum gc : unsigned int {ff ,g};"
             "enum cc{cc, g,h,f};"
-            "jj();"
+            "jj(int g,h g) {}"
+            "~j1j() {}"
             "hh<tt,uuu,dd > as;"
+
             "void a();"
             "signed long int a;"
+
             "int aa(h<d,gd> f) {  int g; h;} "
+
         "};"
         "class XX { class D : public A<B>, private C { float a; class V{ int c; }; }; int s; };"
-        "T<D,t> func(int ads, XC<F,d,f > d) {}"
+        "T<D,t> func(int ads, XC<F,d,f > d) { a= p+1(1,2,3); }"
         "}}";
 /*
     s= "int ao_plugin_test(); \

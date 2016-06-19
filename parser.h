@@ -41,7 +41,8 @@ private:
     struct Scope
     {
         ScopeType type;
-        std::string text;
+        int index;
+        int ttop;
         Scope()
         {
             reset();
@@ -49,7 +50,7 @@ private:
         void reset()
         {
             type = S_NONE;
-            text = "";
+            index = 0;
         }
         bool isSet()
         {
@@ -83,14 +84,14 @@ private:
 
 public:
     Parser();
-
+    int parseBlock(int from, int to);
     int parseVar(int from);
     int parseType(int from, int to);
     int parseFunc(int from, int to);
-    int parseFuncDecl(int from, int to);
-    int parseArgList(int from, int to);
+    int parseArgList(int from, int to, std::vector<std::string> &args);
     int parseEnum(int from, int to);
     int parseClass(int from, int to);
+    int parseMemberFunc(int from, int to);
     int parseMember(int from, int to);
     int parseConstructor(int from, int to);
     int parseDestructor(int from, int to);
@@ -99,6 +100,8 @@ public:
     void print();
     void printScope();
 
+    std::string toString(int from, int to);
+
 private:
-    int parseFuncSignature(int from, int to);
+    int parseFuncSignature(int from, int to, std::string& retType, std::string& funcName, std::vector<std::string>& args);
 };
