@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <regex>
+#include <tuple>
 
 #include "codemodel.h"
 
@@ -77,10 +78,9 @@ private:
     std::regex m_re_basic_type;
     std::regex m_re_variable;
     std::vector<Parser::Token> m_tokens;
-    std::vector<int> m_tstack;
-    std::vector<Scope> m_sstack;
+
     ScopeNode *m_scopeRoot;
-    std::stack<ScopeNode *> m_scopeNodes;
+    std::vector<std::tuple<int, ScopeNode *>> m_scopeNodes;
 
 public:
     Parser();
@@ -91,10 +91,15 @@ public:
     int parseArgList(int from, int to, std::vector<std::string> &args);
     int parseEnum(int from, int to);
     int parseClass(int from, int to);
+    int parseClassName(int from, int to);
     int parseMemberFunc(int from, int to);
     int parseMember(int from, int to);
     int parseConstructor(int from, int to);
     int parseDestructor(int from, int to);
+    int parseClassBootstrap(int from, int to);
+    int parseEnumBootstrap(int from, int to, ScopeNode* scopeNode);
+    int parseIdentifierName(int from, int to);
+    void tokenize(const char* cpp, int len);
     void tokenize(const std::string& cpp);
     void parse();
     void print();
@@ -104,4 +109,8 @@ public:
 
 private:
     int parseFuncSignature(int from, int to, std::string& retType, std::string& funcName, std::vector<std::string>& args);
+
+    ScopeNode *getCurrentScope();
+    bool isCurrentScopeNull();
+    int getCurrentTokenIndex();
 };

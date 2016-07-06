@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdio>
+
 #include "parser.h"
 using namespace std;
 
@@ -21,19 +23,33 @@ int main(int argc, char *argv[])
             "enum cf : int {dd,g};"
             "enum gc : unsigned int {ff ,g};"
             "enum cc{cc, g,h,f};"
-            "jj(int g,h g) {}"
+            "jj(aaa::int g,h g) {}"
             "~j1j() {}"
             "hh<tt,uuu,dd > as;"
 
             "void a();"
             "signed long int a;"
 
-            "int aa(h<d,gd> f) {  int g; h;} "
+            "cc::int aa(h<d,gd> f) {  int g; h;} "
 
         "};"
         "class XX { class D : public A<B>, private C { float a; class V{ int c; }; }; int s; };"
         "T<D,t> func(int ads, XC<F,d,f > d) { a= p+1(1,2,3); }"
         "}}";
+
+    FILE* f=fopen("/home/madura/wrk/cppfp/parser.h","r");
+
+    std::string txt;
+    while (!feof(f))
+    {
+        char c = fgetc(f);
+        txt+=c;
+
+    }
+    std::cout<<txt<<std::endl;
+    fclose(f);
+
+    p.tokenize(txt);
 /*
     s= "int ao_plugin_test(); \
             ao_info *ao_plugin_driver_info(); \
@@ -45,7 +61,8 @@ int main(int argc, char *argv[])
             int ao_plugin_close(ao_device *device);\
             void ao_plugin_device_clear(ao_device *device);\
             const char *ao_plugin_file_extension();";*/
-    p.tokenize(s);
+
+    //p.tokenize(s);
     p.parse();
     p.print();
     return 0;

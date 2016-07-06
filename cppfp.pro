@@ -5,8 +5,13 @@ CONFIG -= qt
 
 SOURCES += main.cpp \
     parser.cpp \
-    codemodel.cpp
+    codemodel.cpp \
+    filereader.cpp
 
 HEADERS += \
     parser.h \
-    codemodel.h
+    codemodel.h \
+    filereader.h
+
+LIBS += \
+    -luv

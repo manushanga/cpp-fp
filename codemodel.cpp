@@ -1,37 +1,9 @@
 #include "codemodel.h"
 
-Node::Node(const std::string& name, NodeType type) :
-    m_name(name),
-    m_type(type)
-{
 
-}
-
-const std::string &Node::getName() const
-{
-    return m_name;
-}
-
-void Node::addData(const std::__cxx11::string &data)
+void ScopeNode::addData(const std::string &data)
 {
     m_data.push_back(data);
-}
-
-void Node::print(std::string &output) const
-{
-    output += "name: ";
-    output += m_name;
-    output += "\n";
-    output += "type: ";
-    output += NodeTypeNames[m_type];
-    output += "\n";
-    output += "data: [";
-    for (auto& data : m_data)
-    {
-        output += data;
-        output += " ";
-    }
-    output += "]\n";
 }
 
 ScopeNode::ScopeNode(const std::string &name, ScopeType type) :
@@ -46,14 +18,15 @@ const std::string &ScopeNode::getName() const
     return m_name;
 }
 
-void ScopeNode::addNode(const Node &node)
-{
-    m_nodes.insert(std::make_pair(node.getName(), &node));
-}
 
 void ScopeNode::addChildScope(const ScopeNode &scopeNode)
 {
     m_children.insert(std::make_pair(scopeNode.getName(), &scopeNode));
+}
+
+ScopeType ScopeNode::getType()
+{
+    return m_type;
 }
 
 void ScopeNode::print(std::string &output) const
@@ -64,16 +37,7 @@ void ScopeNode::print(std::string &output) const
     output += "type: ";
     output += ScopeTypeNames[m_type];
     output += "\n";
-    if (!m_nodes.empty())
-    {
-        output += "nodes: \n";
-        output += "[\n";
-        for (auto& node : m_nodes)
-        {
-            node.second->print(output);
-        }
-        output += "]\n";
-    }
+
     if (!m_children.empty())
     {
         output += "children:\n";
@@ -81,6 +45,17 @@ void ScopeNode::print(std::string &output) const
         for (auto& child : m_children)
         {
             child.second->print(output);
+        }
+        output += "}\n";
+    }
+
+    if (!m_data.empty())
+    {
+        output += "data:";
+        output += "{";
+        for (auto& data : m_data)
+        {
+            output += data + " ";
         }
         output += "}\n";
     }

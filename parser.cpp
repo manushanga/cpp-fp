@@ -1,10 +1,11 @@
- #include "codemodel.h"
+#include "codemodel.h"
 #include "parser.h"
 
 #include <vector>
 #include <iostream>
 #include <stack>
 #include <regex>
+#include <cassert>
 
 #define LEN_CHK(__minlen, __ret) \
     if (m_tokens.size() < __minlen) \
@@ -84,46 +85,12 @@ int Parser::parseVar(int from)
     }
 }
 
-int Parser::parseType(int from, int to)
+
+int Parser::parseClassName(int from, int to)
 {
-    LEN_CHK(from,-1)
-    if (m_tokens[from].text == "static" )
-    {
-        from+=1;
-    }
-    LEN_CHK(from,-1)
-    if (m_tokens[from].text == "const")
-    {
-        from+=1;
-    }
-
-    const char* signedness[] = {"signed","unsigned"};
-    for (int i=0;i<sizeof(signedness)/sizeof(void *);i++)
-    {
-        LEN_CHK(from,-1)
-        if (m_tokens[from].text == signedness[i])
-        {
-            from+=1;
-            break;
-        }
-    }
-
-    LEN_CHK(from,-1)
-    if (m_tokens[from].text == "long")
-    {
-        from+=1;
-    }
-
     if (m_tokens[from].type != T_WORD)
         return -1;
 
-    LEN_CHK(from+1,-1)
-    if (m_tokens[from+1].type == T_MUL || m_tokens[from+1].type == T_AMP)
-    {
-        from+=1;
-    }
-
-    LEN_CHK(from+1,-1)
     if (m_tokens[from+1].type != T_LT)
         return from +1;
 
@@ -153,9 +120,97 @@ int Parser::parseType(int from, int to)
 
             break;
         case T_SEPARATOR:
+        case T_WORD:
+            break;
+        default:
+            err = 1;
+            break;
+        }
+        i++;
+    }
+
+    return -1;
+}
+
+int Parser::parseType(int from, int to)
+{
+
+    LEN_CHK(from,-1)
+    if (m_tokens[from].text == "static" )
+    {
+        from+=1;
+    }
+    LEN_CHK(from,-1)
+    if (m_tokens[from].text == "const")
+    {
+        from+=1;
+    }
+
+    const char* signedness[] = {"signed","unsigned"};
+    for (int i=0;i<sizeof(signedness)/sizeof(void *);i++)
+    {
+        LEN_CHK(from,-1)
+        if (m_tokens[from].text == signedness[i])
+        {
+            from+=1;
+            break;
+        }
+    }
+
+    LEN_CHK(from,-1)
+    if (m_tokens[from].text == "long")
+    {
+        from+=1;
+    }
+
+    int ret = parseIdentifierName(from, to);
+
+    if (ret == -1)
+        return -1;
+
+
+    from = ret;
+    LEN_CHK(from,-1)
+
+    if (m_tokens[from].type == T_MUL || m_tokens[from].type == T_AMP)
+    {
+        from+=1;
+    }
+
+    LEN_CHK(from,-1)
+    if (m_tokens[from].type != T_LT)
+        return from ;
+
+    int i=from ;
+    int err=0;
+    int scope=0;
+    while (i<to && err == 0)
+    {
+        const Token& t = m_tokens[i];
+        switch (t.type)
+        {
+        case T_LT:
+            scope++;
+            break;
+        case T_GT:
+            scope--;
+
+            if (scope == 0)
+            {
+                LEN_CHK(i+1,-1)
+                if (m_tokens[i+1].type == T_MUL || m_tokens[i+1].type == T_AMP)
+                {
+                    i+=1;
+                }
+                return i + 1;
+            }
+
+            break;
+        case T_SEPARATOR:
         case T_AMP:
         case T_MUL:
         case T_WORD:
+        case T_COLON:
             break;
         default:
             err = 1;
@@ -177,27 +232,28 @@ int Parser::parseFunc(int from, int to)
         // function decl
         if (m_tokens[ret].type == T_STATEMENT_END)
         {
-            Node *node = new Node(funcName, TID_FUNCTION);
+            ScopeNode *node = new ScopeNode(funcName, SID_FUNCTION);
             node->addData(retType);
             node->addData(funcName);
             for (auto& arg : args)
             {
                 node->addData(arg);
             }
-            m_scopeNodes.top()->addNode(*node);
+            std::cout<<"xx"<<getCurrentScope()->getName()<<std::endl;
+            getCurrentScope()->addChildScope(*node);
 
             return ret + 1;
         }
         else if (m_tokens[ret].type == T_BLOCK_START)
         {
-            Node *node = new Node(funcName, TID_FUNCTION);
+            ScopeNode *node = new ScopeNode(funcName, SID_FUNCTION);
             node->addData(retType);
             node->addData(funcName);
             for (auto& arg : args)
             {
                 node->addData(arg);
             }
-            m_scopeNodes.top()->addNode(*node);
+            getCurrentScope()->addChildScope(*node);
 
             return parseBlock(ret, to);
         }
@@ -271,29 +327,7 @@ int Parser::parseArgList(int from, int to, std::vector<std::string>& args)
 
 int Parser::parseEnum(int from, int to)
 {
-    if (m_tokens[from].text != "enum")
-        return -1;
-
-    if (m_tokens[from+1].text == "class")
-        from++;
-
-    int i=from+3;
-
-    if (m_tokens[from+1].type != T_WORD) // must be enum name
-        return -1;
-
-    auto node = new Node(m_tokens[from+1].text, TID_ENUM);
-
-    m_scopeNodes.top()->addNode(*node);
-
-    if (m_tokens[from+2].type == T_COLON) // integral data type specfication
-    {
-        i = parseType(from+3, to);
-        if (i == -1)
-            return -1;
-        else
-            i++;
-    }
+    int i=from;
     int state = 0;
     while (i < to)
     {
@@ -301,11 +335,9 @@ int Parser::parseEnum(int from, int to)
         case 0:
             if (m_tokens[i].type == T_WORD)
             {
-                node->addData(m_tokens[i].text);
+                getCurrentScope()->addData(m_tokens[i].text);
                 state = 1;
             }
-            else
-                return -1;
             break;
         case 1:
             if (m_tokens[i].type == T_ASSIGN)
@@ -335,46 +367,14 @@ int Parser::parseEnum(int from, int to)
 
 int Parser::parseClass(int from, int to)
 {
-    if (m_tokens[from].text != "class")
-        return -1;
-
-    int i = from + 1;
-    i = parseType(i, to);
-
-    if (i == -1)
-        return -1;
-
-    if (m_tokens[i].type == T_COLON)
-    {
-        i++;
-        while (i<to)
-        {
-            if (m_tokens[i].text == "protected" ||
-                m_tokens[i].text == "public" ||
-                m_tokens[i].text == "private" ||
-                m_tokens[i].text == "virtual")
-            {
-                i = parseType(i+1, to);
-                if (i == -1)
-                {
-                    return -1;
-                }
-                if (m_tokens[i].type == T_BLOCK_START)
-                    break;
-                else if (m_tokens[i].type != T_SEPARATOR)
-                    return -1;
-            }
-            i++;
-        }
-    }
-    i+=1;
+    int i = from;
     while(i<to)
     {
         if (m_tokens[i].type == T_WORD)
         {
-            if (m_tokens[i].text == "protected:" ||
-                m_tokens[i].text == "public:" ||
-                m_tokens[i].text == "private:")
+            if (m_tokens[i].text == "protected" ||
+                m_tokens[i].text == "public" ||
+                m_tokens[i].text == "private")
             {
                 i+=2;
             } else if (m_tokens[i].text == "class" ||
@@ -409,6 +409,7 @@ int Parser::parseClass(int from, int to)
             }
         }
         int ret = -1;
+        std::cout<<"m---"<<m_tokens[i].text<<std::endl;
         if ((ret = parseMember(i, to)) > -1)
         {
             std::cout<<"memf"<<m_tokens[i].text<<std::endl;
@@ -421,12 +422,9 @@ int Parser::parseClass(int from, int to)
             printScope();
             i = ret ;
         }
-        else
-        {
-            i++;
-        }
+        i++;
     }
-    return to;
+    return -1;
 }
 
 int Parser::parseMemberFunc(int from, int to)
@@ -452,9 +450,8 @@ int Parser::parseMember(int from, int to)
     int x = parseType(from, to);
     if (x >= 0)
     {
-        LEN_CHK(x+1,-1)
         if (m_tokens[x].type == T_WORD && m_tokens[x+1].type == T_STATEMENT_END)
-            return x+2;
+            return x+1;
     }
     return -1;
 }
@@ -473,22 +470,22 @@ int Parser::parseConstructor(int from, int to)
 
     if (m_tokens[ret].type == T_STATEMENT_END) // decl
     {
-        Node *node = new Node(m_tokens[from].text, TID_CONSTRUCTOR);
+        ScopeNode *node = new ScopeNode(m_tokens[from].text, SID_CONSTRUCTOR);
         for (auto& arg : args)
         {
             node->addData(arg);
         }
-        m_scopeNodes.top()->addNode(*node);
-        return ret + 1;
+        getCurrentScope()->addChildScope(*node);
+        return ret;
     }
     else if (m_tokens[ret].type == T_BLOCK_START)
     {
-        Node *node = new Node(m_tokens[from].text, TID_CONSTRUCTOR);
+        ScopeNode *node = new ScopeNode(m_tokens[from].text, SID_CONSTRUCTOR);
         for (auto& arg : args)
         {
             node->addData(arg);
         }
-        m_scopeNodes.top()->addNode(*node);
+        getCurrentScope()->addChildScope(*node);
         int jj=parseBlock(ret,to);
         return jj;
     }
@@ -516,14 +513,14 @@ int Parser::parseDestructor(int from, int to)
 
     if (m_tokens[ret].type == T_STATEMENT_END) // decl
     {
-        Node *node = new Node(m_tokens[from].text, TID_DESTRUCTOR);
-        m_scopeNodes.top()->addNode(*node);
+        ScopeNode *node = new ScopeNode(m_tokens[from].text, SID_DESTRUCTOR);
+        getCurrentScope()->addChildScope(*node);
         return ret + 1;
     }
     else if (m_tokens[ret].type == T_BLOCK_START)
     {
-        Node *node = new Node(m_tokens[from].text, TID_DESTRUCTOR);
-        m_scopeNodes.top()->addNode(*node);
+        ScopeNode *node = new ScopeNode(m_tokens[from].text, SID_DESTRUCTOR);
+        getCurrentScope()->addChildScope(*node);
         return parseBlock(ret,to);
     }
     else
@@ -532,12 +529,137 @@ int Parser::parseDestructor(int from, int to)
     }
 }
 
-void Parser::tokenize(const std::string& cpp)
+int Parser::parseClassBootstrap(int from, int to)
+{
+    if (m_tokens[from].type != T_WORD || m_tokens[from].text != "class" || m_tokens[from+1].type != T_WORD)
+        return -1;
+
+    int i = from + 1;
+    i = parseClassName(i, to);
+
+    if (i == -1)
+        return -1;
+
+    if (m_tokens[i].type == T_COLON)
+    {
+        i++;
+        while (i<to)
+        {
+            if (m_tokens[i].text == "protected" ||
+                m_tokens[i].text == "public" ||
+                m_tokens[i].text == "private" ||
+                m_tokens[i].text == "virtual")
+            {
+                std::cout<<"ooo "<<toString(i, to)<<std::endl;
+                i = parseType(i+1, to);
+
+
+                if (i == -1)
+                {
+                    return -1;
+                }
+                std::cout<<"ooo "<<toString(i, to)<<std::endl;
+                if (m_tokens[i].type == T_BLOCK_START)
+                    return i;
+                else if (m_tokens[i].type != T_SEPARATOR)
+                    return -1;
+
+            }
+
+            i++;
+        }
+    }
+    return m_tokens[i].type == T_BLOCK_START ? i +1 : -1 ;
+}
+
+int Parser::parseEnumBootstrap(int from, int to, ScopeNode *scopeNode)
+{
+    if (m_tokens[from].text != "enum")
+        return -1;
+
+    if (m_tokens[from+1].text == "class")
+        from++;
+
+    int i=from+3;
+
+    if (m_tokens[from+1].type != T_WORD) // must be enum name
+        return -1;
+
+    if (m_tokens[from+2].type == T_COLON) // integral data type specfication
+    {
+        i = parseType(from+3, to);
+        if (i == -1)
+            return -1;
+        else
+            return i+1;
+    }
+
+    return (m_tokens[from+2].type == T_BLOCK_START) ? from + 2 : -1;
+}
+
+int Parser::parseIdentifierName(int from, int to)
+{
+    int i =  from;
+    int state =0;
+    while (i<to)
+    {
+        switch (state)
+        {
+        case 0:
+            if (m_tokens[i].type == T_WORD)
+            {
+                state = 1;
+            } else if (m_tokens[i].type == T_COLON)
+            {
+                state = 2;
+            } else
+            {
+                return -1;
+            }
+            break;
+        case 1:
+            if (m_tokens[i].type == T_COLON)
+            {
+                state = 2;
+            }else
+            {
+                return i;
+            }
+            break;
+        case 2:
+            if (m_tokens[i].type == T_COLON)
+            {
+                state = 3;
+            }else
+            {
+                return -1;
+            }
+            break;
+        case 3:
+            if (m_tokens[i].type == T_WORD)
+            {
+                state = 1;
+            }else
+            {
+                return -1;
+            }
+            break;
+        default:
+            return -1;
+        }
+
+        i++;
+    }
+
+    return i;
+}
+
+void Parser::tokenize(const char *cpp, int len)
 {
     int i=0;
     TokenType state = T_NONE;
     Token current;
-    while (i<cpp.size())
+    while (i<len)
     {
         char c = cpp[i];
         switch (c)
@@ -581,10 +703,17 @@ void Parser::tokenize(const std::string& cpp)
     }
 }
 
+void Parser::tokenize(const std::string& cpp)
+{
+    tokenize(cpp.c_str(), cpp.size());
+}
+
 void Parser::parse()
 {
     m_scopeRoot = new ScopeNode("", SID_FILE);
-    m_scopeNodes.push(m_scopeRoot);
+    m_scopeNodes.push_back(std::make_tuple(0,m_scopeRoot));
+
+    ScopeNode* currentNamedScope=nullptr;
 
     const char* blocks[] = {"class","namespace", "enum", "struct"};
 
@@ -600,7 +729,22 @@ void Parser::parse()
             break;
         }
         case T_BLOCK_START:
-            m_tstack.push_back(i);
+            if (currentNamedScope)
+            {
+                std::cout<<currentNamedScope<<currentNamedScope->getName()<<std::endl;
+                for (int i=m_scopeNodes.size()-1;i>=0;i--)
+                {
+                    if (!isCurrentScopeNull())
+                    {
+                        std::get<1>(m_scopeNodes[i])->addChildScope(*currentNamedScope);
+                        break;
+                    }
+                }
+            }
+
+            std::cout<<"-------"<<toString(i, i+10)<< " "<< currentNamedScope<<std::endl;
+            m_scopeNodes.push_back(std::make_tuple(i, currentNamedScope));
+            currentNamedScope = nullptr;
             break;
         case T_BRACKET_OPEN:
             break;
@@ -608,112 +752,91 @@ void Parser::parse()
             break;
         case T_BLOCK_END:
         {
-            /// {} doesnt match!
-            if ( !m_sstack.empty() && m_sstack.back().ttop +1 == m_tstack.size() )
+            int from = getCurrentTokenIndex();
+            if (!isCurrentScopeNull())
             {
-                int from = m_sstack.back().index;
-                Scope scope = m_sstack.back();
-                switch (scope.type)
+                std::cout<<"vv"<<getCurrentScope()->getName()<<std::endl;
+                switch (getCurrentScope()->getType())
                 {
-                case S_ENUM:
+                case SID_ENUM:
                 {
                     int ret = parseEnum(from, i);
                     if (ret > 0)
                     {
-                        i = ret;
+                        //i = ret;
                     }
                     break;
                 }
-                case S_CLASS:
+                case SID_CLASS:
                 {
                     int ret = parseClass(from, i);
                     if (ret > 0)
                     {
-                        i = ret;
+                        //i = ret;
                     }
                     break;
                 }
                 default:
                     break;
                 }
-
-
-                m_sstack.pop_back();
-                if (m_scopeNodes.size()>1)
-                    m_scopeNodes.pop();
-
             }
+            m_scopeNodes.pop_back();
 
-            m_tstack.pop_back();
             break;
         }
         default:
         {
             bool found=false;
+
             if (m_tokens[i].type == T_WORD )
             {
-                Scope scope;
                 if (m_tokens[i].text == "namespace" && m_tokens[i+1].type == T_WORD) // namespace with a name
                 {
-                    scope.type = S_NAMESPACE;
-                    scope.index = i;
-                    scope.ttop = m_tstack.size();
-                    m_sstack.push_back(scope);
-
                     auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_NAMESPACE);
-                    m_scopeNodes.top()->addChildScope(*nodePtr);
-                    m_scopeNodes.push(nodePtr);
+                    currentNamedScope = nodePtr;
                     found = true;
                 }
                 else if (m_tokens[i].text == "namespace" && m_tokens[i+1].type == T_BLOCK_START) // namspace without a name
                 {
-                    scope.type = S_NAMESPACE;
-                    scope.index = i;
-                    scope.ttop = m_tstack.size();
-                    m_sstack.push_back(scope);
 
                     auto nodePtr = new ScopeNode("$ANONYMOUS", SID_NAMESPACE);
-                    m_scopeNodes.top()->addChildScope(*nodePtr);
-                    m_scopeNodes.push(nodePtr);
+                    currentNamedScope = nodePtr;
                     found = true;
                 }
                 else if (m_tokens[i].text == "class" && m_tokens[i+1].type == T_WORD)
                 {
-                    scope.type = S_CLASS;
-                    scope.index = i;
-                    scope.ttop = m_tstack.size();
-                    m_sstack.push_back(scope);
 
                     auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_CLASS);
-                    m_scopeNodes.top()->addChildScope(*nodePtr);
-                    m_scopeNodes.push(nodePtr);
-                    found = true;
+                    int ret = parseClassBootstrap(i, m_tokens.size());
+
+                    if (ret != -1)
+                    {
+                        currentNamedScope = nodePtr;
+                        found = true;
+                    }
 
                 }
                 else if (m_tokens[i].text == "struct" && m_tokens[i+1].type == T_WORD)
                 {
-                    scope.type = S_STRUCT;
-                    scope.index = i;
-                    scope.ttop = m_tstack.size();
-                    m_sstack.push_back(scope);
-
                     auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_STRUCT);
-                    m_scopeNodes.top()->addChildScope(*nodePtr);
-                    m_scopeNodes.push(nodePtr);
+                    currentNamedScope = nodePtr;
                     found = true;
                 }
                 else if (m_tokens[i].text == "enum" && m_tokens[i+1].type == T_WORD)
                 {
-                    scope.type = S_ENUM;
-                    scope.index = i;
-                    scope.ttop = m_tstack.size();
-                    m_sstack.push_back(scope);
+                    auto nodePtr = new ScopeNode(m_tokens[i+1].text, SID_ENUM);
 
-                    found = true;
+                    int ret = parseEnumBootstrap(i, m_tokens.size(), nodePtr);
+
+                    if (ret != -1)
+                    {
+                        currentNamedScope = nodePtr;
+                        found = true;
+                    }
                 }
             }
 
-
+/*
             if (m_sstack.empty() && found == false)
             {
                 int ret;
@@ -722,12 +845,14 @@ void Parser::parse()
                     i = ret -1;
                 }
 
-            }
+            }*/
             break;
         }
         }
         i++;
     }
+
+    assert(m_scopeNodes.size() == 1);
 }
 
 void Parser::print()
@@ -771,4 +896,21 @@ int Parser::parseFuncSignature(int from, int to, std::string& retType, std::stri
     int i=ret + 2;
 
     return parseArgList(i, to, args);
+}
+
+ScopeNode *Parser::getCurrentScope()
+{
+    auto node = std::get<1>(m_scopeNodes.back());
+    assert(node != nullptr);
+    return node;
+}
+
+bool Parser::isCurrentScopeNull()
+{
+    return std::get<1>(m_scopeNodes.back()) == nullptr;
+}
+
+int Parser::getCurrentTokenIndex()
+{
+    return std::get<0>(m_scopeNodes.back());
 }
