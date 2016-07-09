@@ -36,33 +36,21 @@ private:
         T_BRACKET_OPEN,
         T_BRACKET_CLOSE,
         T_STATEMENT_END,
+        T_SQ_BRACKET_OPEN,
+        T_SQ_BRACKET_CLOSE,
         T_SHARP,
         T_NONE
     };
-    struct Scope
-    {
-        ScopeType type;
-        int index;
-        int ttop;
-        Scope()
-        {
-            reset();
-        }
-        void reset()
-        {
-            type = S_NONE;
-            index = 0;
-        }
-        bool isSet()
-        {
-            return type != S_NONE;
-        }
-    };
+
     struct Token
     {
         TokenType type;
         std::string text;
 
+        Token() :
+            type(T_NONE)
+        {
+        }
         void reset()
         {
             type = T_NONE;
@@ -79,8 +67,8 @@ private:
     std::regex m_re_variable;
     std::vector<Parser::Token> m_tokens;
 
-    ScopeNode *m_scopeRoot;
-    std::vector<std::tuple<int, ScopeNode *>> m_scopeNodes;
+    Node *m_scopeRoot;
+    std::vector<std::tuple<int, Node *>> m_scopeNodes;
 
 public:
     Parser();
@@ -97,10 +85,11 @@ public:
     int parseConstructor(int from, int to);
     int parseDestructor(int from, int to);
     int parseClassBootstrap(int from, int to);
-    int parseEnumBootstrap(int from, int to, ScopeNode* scopeNode);
+    int parseEnumBootstrap(int from, int to, Node* scopeNode);
     int parseIdentifierName(int from, int to);
-    void tokenize(const char* cpp, int len);
-    void tokenize(const std::string& cpp);
+    int preprocess(char* cpp, int len);
+    void tokenize(const char* cpp, int len, std::map<std::string, std::string>& assignment);
+    void tokenize(const std::string& cpp, std::map<std::string, std::string>& assignment);
     void parse();
     void print();
     void printScope();
@@ -110,7 +99,7 @@ public:
 private:
     int parseFuncSignature(int from, int to, std::string& retType, std::string& funcName, std::vector<std::string>& args);
 
-    ScopeNode *getCurrentScope();
+    Node *getCurrentScope();
     bool isCurrentScopeNull();
     int getCurrentTokenIndex();
 };

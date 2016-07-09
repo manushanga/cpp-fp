@@ -1,55 +1,99 @@
 #include <iostream>
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <cstdio>
 
 #include "parser.h"
 using namespace std;
+namespace bf = boost::filesystem;
 
 int main(int argc, char *argv[])
 {
-    Parser p;
+
     std::string s;
-    s = "#include <dd.h>"
-		"#define AA \ daf \ d "
-        "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;"
-        "pair<int, jj> ss;"
-        "enum  ENUM  {A=0,V=  450, Hed=2};"
-        "enum class XXE : int {A, H};"
-        "namespace { xx; ff;}"
-        "namespace  nam1 { namespace nam2 { "
-        "class jj<s,f> : private A, public gB<j,df> "
-        "{"
-            "typedef XX<c,C> dd;"
-            "class XXv {};"
-            "enum cf : int {dd,g};"
-            "enum gc : unsigned int {ff ,g};"
-            "enum cc{cc, g,h,f};"
-            "jj(aaa::int g,h g) {}"
-            "~j1j() {}"
-            "hh<tt,uuu,dd > as;"
+    s = "///  dsfafdaf \n"
+        "#include <dd.h> \n"
+        "#define AA \ daf \ d \n"
+        "void main(pair<int, int > a, int<ii*> b, map<ss>* ss) ;\n"
+        "pair<int, jj> ss;\n"
+        "enum  ENUM  {A=0,V=  450, Hed=2};\n"
+        "enum class XXE : int {A, H}; \n"
+        "namespace { xx; ff;}\n"
+        "namespace  nam1 { namespace nam2 { \n"
+        "class jj<s,f> : private A, public gB<j,df> \n"
+        "{\n"
+            "typedef XX<c,C> dd; \n"
+            "class XXv {};\n"
+            "enum cf : int {dd,g};\n"
+            "enum gc : unsigned int {ff ,g};\n"
+            "enum cc{cc, g,h,f};\n"
+            "jj(aaa::int g,h g) {}\n"
+            "~j1j() {}\n"
+            "hh<tt,uuu,dd > as;\n"
 
-            "void a();"
-            "signed long int a;"
+            "void a();\n"
+            "signed long int a;\n"
 
-            "cc::int aa(h<d,gd> f) {  int g; h;} "
+            "cc::int aa(h<d,gd> f) {  int g; h;} \n"
 
         "};"
-        "class XX { class D : public A<B>, private C { float a; class V{ int c; }; }; int s; };"
-        "T<D,t> func(int ads, XC<F,d,f > d) { a= p+1(1,2,3); }"
-        "}}";
-
-    FILE* f=fopen("/home/madura/wrk/cppfp/parser.h","r");
-
-    std::string txt;
-    while (!feof(f))
+        "class XX { class D : public A<B>, private C { float a; class V{ int c; }; }; int s; };\n"
+        "T<D,t> func(int ads, XC<F,d,f > d) { a= p+1(1,2,3); }\n"
+        "}}\n";
+    /*
+Parser xx;
+xx.tokenize(s);
+xx.parse();
+xx.print();
+exit(0);
+*/
+bf::recursive_directory_iterator it("/home/madura/ogre-master");
+    bf::recursive_directory_iterator end;
+    for (;it!=end;it++)
     {
-        char c = fgetc(f);
-        txt+=c;
+        Parser p;
+        std::cout<<it->path()<<std::endl;
+        //std::string fpath("/home/madura/ogre-master/OgreMain/include/OgreRenderTargetListener.h" /*it->path().c_str()*/);
+        std::string fpath(it->path().c_str());
+
+        if (!boost::algorithm::ends_with( fpath, ".cpp")  &&  !boost::algorithm::ends_with(fpath, ".h"))
+            continue;
+
+        FILE* f=fopen( fpath.c_str(),"r");
+
+        int len =bf::file_size( fpath);
+        char *buf = new char[len+ 2];
+
+
+        int i=0;
+        while (!feof(f))
+        {
+            buf[i] = fgetc(f);
+            i++;
+        }
+
+        fclose(f);
+
+        buf[len]  = '\0';
+        buf[len+1]  = '\0';
+
+        if (p.preprocess(buf, len) == 0)
+        {
+            //std::cout<<buf<<std::endl;
+            std::map<std::string, std::string> assignment = { {"_OgreExport", ""} };
+            p.tokenize(buf, len, assignment);
+
+            p.parse();
+
+            p.print();
+        }
+
+
+        delete []buf;
 
     }
-    std::cout<<txt<<std::endl;
-    fclose(f);
 
-    p.tokenize(txt);
+
 /*
     s= "int ao_plugin_test(); \
             ao_info *ao_plugin_driver_info(); \
@@ -63,7 +107,6 @@ int main(int argc, char *argv[])
             const char *ao_plugin_file_extension();";*/
 
     //p.tokenize(s);
-    p.parse();
-    p.print();
+
     return 0;
 }

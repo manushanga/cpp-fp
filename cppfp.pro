@@ -13,5 +13,7 @@ HEADERS += \
     codemodel.h \
     filereader.h
 
+
 LIBS += \
-    -luv
+    -lboost_system \
+    -lboost_filesystem
