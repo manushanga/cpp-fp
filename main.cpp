@@ -6,6 +6,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <cstdio>
+#include <string>
 
 #include "parser.h"
 #include "filereader.h"
@@ -51,7 +52,7 @@ int main(int argc, char* argv[])
     xx.print();
     exit(0);
     */
-    bf::recursive_directory_iterator it("D:\\Dev\\ccp_1\\CCP_Application");
+    bf::recursive_directory_iterator it(argv[1]);
     bf::recursive_directory_iterator end;
     bio::mapped_file file;
     FileReader reader;
@@ -62,8 +63,8 @@ int main(int argc, char* argv[])
     {
        // std::cout << it->path() << std::endl;
         //std::string fpath("/home/madura/ogre-master/OgreMain/include/OgreRenderTargetListener.h" /*it->path().c_str()*/);
-        std::wstring fpath(it->path().c_str());
-        std::wcout << fpath << std::endl;
+        std::string fpath(it->path().c_str());
+        //std::wcout << fpath << std::endl;
         if (boost::algorithm::ends_with(it->path().parent_path().generic_string(), ".git"))
         {
             it.no_push();

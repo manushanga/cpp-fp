@@ -33,11 +33,14 @@ void Worker::onRun()
         }
         else
         {
-            p->preprocess();
-            std::map<std::string, std::string> asgn;
-            p->tokenize(asgn);
-            p->parse();
-           // p->print();
+            if (p->preprocess() == 0)
+            {
+                std::map<std::string, std::string> asgn;
+                p->tokenize(asgn);
+                p->parse();
+                p->print();
+            }
+           //
         }
     }
 }

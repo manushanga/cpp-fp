@@ -837,7 +837,7 @@ void Parser::tokenize(std::map<std::string, std::string>& assignment)
                 m_tokens.push_back(current);
             current.text = c;
             current.type = m_map[c];
-            m_tokens.push_back(current);
+              m_tokens.push_back(current);
             current.reset();
             break;
         default:

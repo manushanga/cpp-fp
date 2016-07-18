@@ -6,14 +6,18 @@ CONFIG -= qt
 SOURCES += main.cpp \
     parser.cpp \
     codemodel.cpp \
-    filereader.cpp
+    filereader.cpp \
+    worker.cpp
 
 HEADERS += \
     parser.h \
     codemodel.h \
-    filereader.h
+    filereader.h \
+    worker.h
 
 
 LIBS += \
     -lboost_system \
-    -lboost_filesystem
+    -lboost_filesystem \
+    -lboost_iostreams \
+    -pthread
