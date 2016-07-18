@@ -19,8 +19,11 @@
 // variable text
 // [a-zA-Z_0-9]+
 
-Parser::Parser()
+Parser::Parser(char* buffer, int bufferLen) :
+    m_buffer(buffer),
+    m_bufferLen(bufferLen)
 {
+
     m_map['('] = T_BRACKET_OPEN;
     m_map['"'] = T_LITERAL_QUOTE;
     m_map[')'] = T_BRACKET_CLOSE;
@@ -708,76 +711,76 @@ int Parser::parseIdentifierName(int from, int to)
 }
 
 /// cpp must have additional two bytes set tp \0 after the end
-int Parser::preprocess(char *cpp, int len)
+int Parser::preprocess()
 {
     int i=0;
     int state = 0;
     int bracket = 0;
 
-    while (i<len)
+    while (i<m_bufferLen)
     {
         switch (state)
         {
         case 0: //normal
         {
-            if (cpp[i] == '/' && cpp[i+1] == '/')
+            if (m_buffer[i] == '/' && m_buffer[i+1] == '/')
             {
-                cpp[i] = ' ';
-                cpp[i+1] = ' ';
+                m_buffer[i] = ' ';
+                m_buffer[i+1] = ' ';
                 state = 1;
 
-            } else if (cpp[i] == '/' && cpp[i+1] == '*')
+            } else if (m_buffer[i] == '/' && m_buffer[i+1] == '*')
             {
-                cpp[i] = ' ';
-                cpp[i+1] = ' ';
+                m_buffer[i] = ' ';
+                m_buffer[i+1] = ' ';
                 state = 3;
 
-            } else if (cpp[i] == '#')
+            } else if (m_buffer[i] == '#')
             {
-                cpp[i] = ' ';
+                m_buffer[i] = ' ';
                 state = 2;
             }
             break;
         }
         case 1: // line comment
         {
-            if (cpp[i] == '\\' && cpp[i+1] == '\n')
+            if (m_buffer[i] == '\\' && m_buffer[i+1] == '\n')
             {
-                cpp[i] = ' ';
-                cpp[i+1] = ' ';
-            } else if (cpp[i] == '\n')
+                m_buffer[i] = ' ';
+                m_buffer[i+1] = ' ';
+            } else if (m_buffer[i] == '\n')
             {
                 state = 0;
             } else
             {
-                cpp[i] = ' ';
+                m_buffer[i] = ' ';
             }
             break;
         }
         case 2: // define
         {
-            if (cpp[i] == '\\' && cpp[i+1] == '\n')
+            if (m_buffer[i] == '\\' && m_buffer[i+1] == '\n')
             {
-                cpp[i] = ' ';
-                cpp[i+1] = ' ';
-            } else if (cpp[i] == '\n')
+                m_buffer[i] = ' ';
+                m_buffer[i+1] = ' ';
+            } else if (m_buffer[i] == '\n')
             {
                 state = 0;
             } else
             {
-                cpp[i] = ' ';
+                m_buffer[i] = ' ';
             }
             break;
         }
         case 3:
         {
-            if (cpp[i] == '*' && cpp[i+1] == '/')
+            if (m_buffer[i] == '*' && m_buffer[i+1] == '/')
             {
-                cpp[i] = ' ';
-                cpp[i+1] = ' ';
+                m_buffer[i] = ' ';
+                m_buffer[i+1] = ' ';
                 state = 0;
             }
-            cpp[i] = ' ';
+            m_buffer[i] = ' ';
             break;
         }
         default:
@@ -785,9 +788,9 @@ int Parser::preprocess(char *cpp, int len)
 
         }
 
-        if (cpp[i] == '{')
+        if (m_buffer[i] == '{')
             bracket++;
-        else if (cpp[i] == '}')
+        else if (m_buffer[i] == '}')
             bracket--;
 
         i++;
@@ -795,16 +798,15 @@ int Parser::preprocess(char *cpp, int len)
     return bracket;
 }
 
-void Parser::tokenize(const char *cpp, int len, std::map<std::string, std::string>& assignment)
+void Parser::tokenize(std::map<std::string, std::string>& assignment)
 {
     int i=0;
     TokenType state = T_NONE;
     Token current;
 
-
-    while (i<len)
+    while (i<m_bufferLen)
     {
-        char c = cpp[i];
+        char c = m_buffer[i];
         switch (c)
         {
         case '\r':
@@ -861,11 +863,6 @@ void Parser::tokenize(const char *cpp, int len, std::map<std::string, std::strin
         }
         i++;
     }
-}
-
-void Parser::tokenize(const std::string& cpp, std::map<std::string, std::string>& assignment)
-{
-    tokenize(cpp.c_str(), cpp.size(),assignment);
 }
 
 void Parser::parse()
@@ -961,7 +958,7 @@ void Parser::parse()
                 {
 
                     auto nodePtr = new Node(m_tokens[i+1].text, SID_CLASS);
-                    int ret = parseClassBootstrap(i, m_tokens.size());
+                    int ret = parseClassBootstrap(i, m_tokens.size() - 1);
 
                     if (ret != -1)
                     {
@@ -973,7 +970,7 @@ void Parser::parse()
                 else if (m_tokens[i].text == "struct" && m_tokens[i+1].type == T_WORD)
                 {
                     auto nodePtr = new Node(m_tokens[i+1].text, SID_STRUCT);
-                    int ret = parseClassBootstrap(i, m_tokens.size());
+                    int ret = parseClassBootstrap(i, m_tokens.size() - 1);
 
                     if (ret != -1)
                     {
@@ -985,7 +982,7 @@ void Parser::parse()
                 {
                     auto nodePtr = new Node(m_tokens[i+1].text, SID_ENUM);
 
-                    int ret = parseEnumBootstrap(i, m_tokens.size(), nodePtr);
+                    int ret = parseEnumBootstrap(i, m_tokens.size() - 1, nodePtr);
 
                     if (ret != -1)
                     {
@@ -998,7 +995,7 @@ void Parser::parse()
             /*if (found == false)
             {
                 int ret;
-                if ((ret = parseFunc(i, m_tokens.size())) > 0 )
+                if ((ret = parseFunc(i, m_tokens.size() - 1)) > 0 )
                 {
                     // std::cout<<"ddddddd"<<std::endl;
                     //i = ret;

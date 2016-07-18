@@ -1,18 +1,33 @@
 #pragma once
 
-#include <string>
+#include<boost/filesystem.hpp>
 
-class File
+#include <atomic>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+
+class Parser;
+
+namespace bf = boost::filesystem;
+
+class FileReader
 {
 public:
-    virtual void onOpen();
-    virtual void onChange();
-    virtual void onRead();
-    virtual void onWrite();
-    virtual void onClose();
-
-    void open(std::string filename, int flags);
-
+    FileReader();
+    void start();
+    void join();
+    void stop();
+    void submit(bf::path filename);
+    Parser* take();
 protected:
+    void onRun();
 
+    std::atomic<bool> m_work;
+    std::thread* m_thread;
+    std::queue<bf::path> m_queue;
+    std::queue<Parser*> m_queueOut;
+    std::mutex m_mutex;
+    std::mutex m_mutOut;
 };

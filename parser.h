@@ -71,7 +71,7 @@ private:
     std::vector<std::tuple<int, Node *>> m_scopeNodes;
 
 public:
-    Parser();
+    Parser(char* buffer, int bufferLen);
     int parseBlock(int from, int to);
     int parseVar(int from);
     int parseType(int from, int to);
@@ -87,9 +87,8 @@ public:
     int parseClassBootstrap(int from, int to);
     int parseEnumBootstrap(int from, int to, Node* scopeNode);
     int parseIdentifierName(int from, int to);
-    int preprocess(char* cpp, int len);
-    void tokenize(const char* cpp, int len, std::map<std::string, std::string>& assignment);
-    void tokenize(const std::string& cpp, std::map<std::string, std::string>& assignment);
+    int preprocess();
+    void tokenize(std::map<std::string, std::string>& assignment);
     void parse();
     void print();
     void printScope();
@@ -98,8 +97,11 @@ public:
 
 private:
     int parseFuncSignature(int from, int to, std::string& retType, std::string& funcName, std::vector<std::string>& args);
-
     Node *getCurrentScope();
     bool isCurrentScopeNull();
     int getCurrentTokenIndex();
+
+    char *m_buffer;
+    int m_bufferLen;
+
 };
