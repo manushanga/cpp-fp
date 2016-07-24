@@ -1,5 +1,6 @@
+#include <stack>
+#include <iostream>
 #include "codemodel.h"
-
 
 void Node::addData(const std::string &data)
 {
@@ -7,6 +8,7 @@ void Node::addData(const std::string &data)
 }
 
 Node::Node(const std::string &name, NodeType type) :
+    m_parent(nullptr),
     m_name(name),
     m_type(type)
 {
@@ -27,6 +29,40 @@ void Node::addChildScope(const Node &scopeNode)
 NodeType Node::getType()
 {
     return m_type;
+}
+
+NodeList Node::find(const std::string &name, int limit)
+{
+    NodeList nlist;
+    std::stack<const Node*> st;
+    st.push(this);
+    while (!st.empty())
+    {
+        const Node* n = st.top();
+        st.pop();
+
+        for (auto& ch : n->m_children)
+        {
+            if (limit < nlist.size())
+            {
+                break;
+            }
+            else
+            {
+                st.push(ch.second);
+            }
+            if (ch.second->m_name.find(name) != std::string::npos)
+            {
+                nlist.push_back(ch.second);
+            }
+
+        }
+        if (limit < nlist.size())
+        {
+            break;
+        }
+    }
+    return nlist;
 }
 
 void Node::print(std::string &output) const
@@ -58,5 +94,20 @@ void Node::print(std::string &output) const
             output += data + " ";
         }
         output += "}\n";
+    }
+}
+
+std::string Node::printToStr() const
+{
+    std::string str;
+    print(str);
+    return str;
+}
+
+Node::~Node()
+{
+    for (auto& ch : m_children)
+    {
+        delete ch.second;
     }
 }

@@ -7,13 +7,18 @@ SOURCES += main.cpp \
     parser.cpp \
     codemodel.cpp \
     filereader.cpp \
-    worker.cpp
+    worker.cpp \
+    test/test1.cpp \
+    searcher.cpp \
+    py-exposer.cpp
 
 HEADERS += \
     parser.h \
     codemodel.h \
     filereader.h \
-    worker.h
+    worker.h \
+    searcher.h \
+    common.h
 
 
 LIBS += \

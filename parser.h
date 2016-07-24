@@ -71,7 +71,7 @@ private:
     std::vector<std::tuple<int, Node *>> m_scopeNodes;
 
 public:
-    Parser(char* buffer, int bufferLen);
+    Parser(const std::string& path, char* buffer, int bufferLen);
     int parseBlock(int from, int to);
     int parseVar(int from);
     int parseType(int from, int to);
@@ -92,6 +92,8 @@ public:
     void parse();
     void print();
     void printScope();
+    std::string getPath();
+    Node *takeNodeRoot();
 
     std::string toString(int from, int to);
 
@@ -103,5 +105,6 @@ private:
 
     char *m_buffer;
     int m_bufferLen;
+    std::string m_path;
 
 };

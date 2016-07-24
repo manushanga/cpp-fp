@@ -19,9 +19,10 @@
 // variable text
 // [a-zA-Z_0-9]+
 
-Parser::Parser(char* buffer, int bufferLen) :
+Parser::Parser(const std::string& path, char* buffer, int bufferLen) :
     m_buffer(buffer),
-    m_bufferLen(bufferLen)
+    m_bufferLen(bufferLen),
+    m_path(path)
 {
 
     m_map['('] = T_BRACKET_OPEN;
@@ -165,10 +166,6 @@ int Parser::parseType(int from, int to)
     }
 
     LEN_CHK(from,-1)
-    if (m_tokens[from].text == "long")
-    {
-        from+=1;
-    }
 
     int ret = parseIdentifierName(from, to);
 
@@ -404,7 +401,6 @@ int Parser::parseClass(int from, int to)
 
         if (block_level == 1)
         {
-
             if (m_tokens[i].type == T_WORD)
             {
                 if (m_tokens[i].text == "protected" ||
@@ -442,21 +438,25 @@ int Parser::parseClass(int from, int to)
                         }
                         i++;
                     }
+                } else
+                {
+                    int ret = -1;
+
+                    //std::cout<<"m---"<<m_tokens[i].text<<std::endl;
+                    if ((ret = parseMember(i, to)) > -1)
+                    {
+                        //std::cout<<"memf"<<m_tokens[i].text<<std::endl;
+
+                        // the loop adds one no need to be on the next token
+                        i = ret -1;
+                    }
+                    else if ((ret = parseMemberFunc(i,to)) > -1)
+                    {
+                        i = ret -1;
+                    }
                 }
             }
-            int ret = -1;
 
-            //std::cout<<"m---"<<m_tokens[i].text<<std::endl;
-            if ((ret = parseMember(i, to)) > -1)
-            {
-                //std::cout<<"memf"<<m_tokens[i].text<<std::endl;
-                i = ret ;
-            }
-            else if ((ret = parseMemberFunc(i,to)) > -1)
-            {
-                //std::cout<<"memfxx"<<m_tokens[i].text<<std::endl;
-                i = ret ;
-            }
         }
         i++;
     }
@@ -1023,6 +1023,21 @@ void Parser::printScope()
 {
 
 
+}
+
+std::string Parser::getPath()
+{
+    return m_path;
+}
+
+Node *Parser::takeNodeRoot()
+{
+    Node* ret = m_scopeRoot;
+
+    m_scopeRoot = nullptr;
+    m_scopeNodes.clear();
+    m_tokens.clear();
+    return ret;
 }
 
 std::string Parser::toString(int from, int to)

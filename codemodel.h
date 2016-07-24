@@ -4,6 +4,8 @@
 #include <vector>
 #include <map>
 
+#include "common.h"
+
 enum NodeType
 {
     SID_FILE=0, SID_NAMESPACE, SID_CLASS, SID_STRUCT, SID_FUNCTION, SID_MEMBER,
@@ -20,13 +22,18 @@ class Node
 {
 public:
     Node(const std::string& name, NodeType type);
+    std::string getNameByVal() const { return m_name; }
     const std::string &getName() const;
     void addData(const std::string& data);
     void addChildScope(const Node& scopeNode);
     NodeType getType();
+    NodeList find(const std::string& name, int limit);
     void print(std::string& output) const;
+    std::string printToStr() const;
+    ~Node();
 private:
     std::map<std::string, const Node*> m_children;
+    Node* m_parent;
     std::string m_name;
     std::vector<std::string> m_data;
     NodeType m_type;

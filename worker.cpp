@@ -4,9 +4,11 @@
 #include "worker.h"
 #include "filereader.h"
 #include "parser.h"
+#include "searcher.h"
 
-Worker::Worker(FileReader* reader) :
-    m_reader(reader)
+Worker::Worker(FileReader* reader, Searcher *searcher) :
+    m_reader(reader),
+    m_searcher(searcher)
 {
 }
 
@@ -35,10 +37,11 @@ void Worker::onRun()
         {
             if (p->preprocess() == 0)
             {
-                std::map<std::string, std::string> asgn;
+                std::map<std::string, std::string> asgn= {{"_OgreExport", ""}};
                 p->tokenize(asgn);
                 p->parse();
-                p->print();
+                //p->print();
+                m_searcher->add(p);
             }
            //
         }
