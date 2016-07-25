@@ -1,6 +1,6 @@
 import fastparser
 import time
-l= ["D:\Dev\ccp_1\CCP_Platform"]
+l= [""]
 ll= [[]]
 f = fastparser.FileReader(l,ll)
 s = fastparser.Searcher()
