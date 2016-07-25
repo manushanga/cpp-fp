@@ -80,21 +80,22 @@ BOOST_PYTHON_MODULE(fastparser)
     class_<StringList>("StringList")
             .def(vector_indexing_suite<std::string>());
 
-
-
     class_<Searcher, boost::noncopyable>("Searcher",boost::python::init<>())
             .def("search", &Searcher::search);
+
     class_<Worker, boost::noncopyable>("Worker",boost::python::init<FileReader*, Searcher*>())
             .def("start", &Worker::start)
+            .def("stop",&Worker::stop)
             .def("join",&Worker::join);
 
     class_<FileReader, boost::noncopyable>("FileReader",boost::python::init<list, list>())
             .def("start", &FileReader::start)
+            .def("stop", &FileReader::stop)
             .def("join",&FileReader::join);
 
     class_<Node, boost::noncopyable>("Node",boost::python::no_init)
             .def("getName", &Node::getNameByVal)
-            .def("print",&Node::printToStr)
+            .def("__str__",&Node::printToStr)
             .def("getType", &Node::getType)
             .def("find", &Node::find);
 

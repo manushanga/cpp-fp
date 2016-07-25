@@ -14,6 +14,7 @@ Worker::Worker(FileReader* reader, Searcher *searcher) :
 
 void Worker::start()
 {
+    m_work.store(true);
     m_thread = new std::thread(&Worker::onRun, this);
 }
 
@@ -22,10 +23,14 @@ void Worker::join()
     m_thread->join();
 }
 
+void Worker::stop()
+{
+    m_work.store(false);
+}
 
 void Worker::onRun()
 {
-    while (true)
+    while (m_work.load())
     {
         auto p = m_reader->take();
 

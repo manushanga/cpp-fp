@@ -62,12 +62,12 @@ FileReader::FileReader(StringList projects, StringListList dependencies) :
 
 void FileReader::start()
 {
+    m_work.store(true);
     m_thread = new std::thread(&FileReader::onRun, this);
 }
 
 void FileReader::join()
 {
-    m_work.store(true);
     m_thread->join();
 }
 

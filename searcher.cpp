@@ -24,10 +24,7 @@ NodeList Searcher::search(std::string name)
     for (auto& it : m_files)
     {
         NodeList nlist = it.second->find(name,10);
-        if (nlist.size() > 0)
-        {
-            return nlist;
-        }
+        rlist.insert(rlist.end(), nlist.begin(), nlist.end());
     }
     return rlist;
 }
